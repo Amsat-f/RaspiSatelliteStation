@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Script amélioré pour installer Gpredict
+
+# Définition des variables
+LOG_FILE="${1:-gpredict_install.log}"
+
+# Fonction pour logger les messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Fonction pour vérifier les erreurs
+check_error() {
+    if [ $? -ne 0 ]; then
+        log_message "ERREUR: $1"
+        exit 1
+    fi
+}
+
+# Début de l'installation
+log_message "Début de l'installation de GPREDICT"
+
+# Mise à jour des paquets
+log_message "Mise à jour de la liste des paquets..."
+sudo apt-get update >> "$LOG_FILE" 2>&1
+check_error "Échec de la mise à jour des paquets"
+
+# Installation de Gpredict
+log_message "Installation de Gpredict..."
+sudo apt-get install -y gpredict >> "$LOG_FILE" 2>&1
+check_error "Échec de l'installation de Gpredict"
+
+# Mise à jour du menu de démarrage
+log_message "Mise à jour du menu de démarrage..."
+sudo sed -i 's/Categories=HamRadio;Science;Astronomy;Education;Network;/Categories=HamRadio;/' /usr/share/applications/gpredict.desktop
+check_error "Échec de la mise à jour du fichier .desktop"
+
+log_message "Installation de GPREDICT terminée avec succès"
+
+exit 0

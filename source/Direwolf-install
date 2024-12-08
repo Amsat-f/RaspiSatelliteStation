@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Script amélioré pour installer Direwolf
+
+# Fonction d'aide
+display_help() {
+    echo "Usage: $0 LOG_FILE SOURCE_DIR CALLSIGN"
+    echo
+    echo "Arguments:"
+    echo "  LOG_FILE     : Fichier où les logs de l'installation seront écrits (par défaut: direwolf_install.log)"
+    echo "  SOURCE_DIR   : Répertoire où le code source sera téléchargé (par défaut: \$HOME/source)"
+    echo "  CALLSIGN     : Indicateur d'appel à utiliser dans la configuration (par défaut: N0CALL)"
+    echo
+    echo "Options:"
+    echo "  -h, --help   : Afficher ce message d'aide"
+    exit 1
+}
+
+# Vérification des arguments
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    display_help
+fi
+
+# Définition des variables
+LOG_FILE="${1:-direwolf_install.log}"
+SOURCE_DIR="${2:-$HOME/source}"
+CALLSIGN="${3:-N0CALL}"
+
+# Fonction pour logger les messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Fonction pour vérifier les erreurs
+check_error() {
+    if [ $? -ne 0 ]; then
+        log_message "ERREUR: $1"
+        exit 1
+    fi
+}
+
+# Début de l'installation
+log_message "Début de l'installation de DIREWOLF"
+
+# Création du répertoire source
+mkdir -p "$SOURCE_DIR"
+check_error "Impossible de créer le répertoire $SOURCE_DIR"
+
+# Téléchargement du code source
+log_message "Téléchargement du code source..."
+cd "$SOURCE_DIR" || exit 1
+git clone https://www.github.com/wb2osz/direwolf >> "$LOG_FILE" 2>&1
+check_error "Échec du clonage du dépôt Direwolf"
+
+cd "$SOURCE_DIR/direwolf" || exit 1
+
+# Installation des dépendances
+log_message "Installation des dépendances..."
+sudo apt-get update >> "$LOG_FILE" 2>&1
+sudo apt-get install -y cmake libasound2-dev libudev-dev >> "$LOG_FILE" 2>&1
+check_error "Échec de l'installation des dépendances"
+
+# Compilation
+log_message "Compilation de Direwolf..."
+mkdir build && cd build || exit 1
+cmake -DUNITTEST=1 .. >> "$LOG_FILE" 2>&1
+check_error "Échec de la configuration CMake"
+
+make -j4 >> "$LOG_FILE" 2>&1
+check_error "Échec de la compilation"
+
+make test >> "$LOG_FILE" 2>&1
+check_error "Échec des tests unitaires"
+
+# Installation
+log_message "Installation de Direwolf..."
+sudo make install >> "$LOG_FILE" 2>&1
+check_error "Échec de l'installation"
+
+log_message "Installation de la configuration"
+make install-conf >> "$LOG_FILE" 2>&1
+check_error "Échec de l'installation de la configuration"
+
+# Modification du fichier de configuration
+log_message "Configuration de Direwolf..."
+sudo mv "$HOME/direwolf.conf" /etc/
+sudo sed -i "s/N0CALL/$CALLSIGN/" /etc/direwolf.conf
+sudo sed -i 's/# ADEVICE  plughw:1,0/ADEVICE  plughw:1,0/' /etc/direwolf.conf
+check_error "Échec de la modification du fichier de configuration"
+
+# Nettoyage
+log_message "Nettoyage des fichiers temporaires..."
+cd "$SOURCE_DIR" || exit 1
+rm -rf direwolf
+
+log_message "Installation de DIREWOLF terminée avec succès"
+
+exit 0
