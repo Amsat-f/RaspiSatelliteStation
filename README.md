@@ -16,3 +16,9 @@ For optimal use, please ensure to:
 - Use the latest version of Raspberry Pi OS
 - Have a stable Internet connection
 - Have administrative rights (sudo)
+
+## Application installation scripts
+
+- Direwolf
+- Gpredict
+- Hamlib
